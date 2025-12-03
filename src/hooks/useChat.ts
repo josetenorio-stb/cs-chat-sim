@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Message, Ticket } from "@/types/ticket";
+import { supabase } from "@/integrations/supabase/client";
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
@@ -7,7 +8,7 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState("https://flow.starbem.dev/webhook-test/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c");
+  const [threadId] = useState(() => generateId()); // Thread ID único por sessão
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const createOrUpdateTicket = useCallback((userMessage: Message, agentMessage?: Message) => {
@@ -62,36 +63,26 @@ export function useChat() {
     try {
       let agentResponse = "Obrigado pela sua mensagem! Estou aqui para ajudar. Como posso auxiliá-lo?";
       
-      if (webhookUrl) {
-        try {
-          console.log('Sending to webhook:', webhookUrl);
-          const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: content,
-              timestamp: new Date().toISOString(),
-              sender: 'user',
-            }),
-          });
+      try {
+        console.log('Sending to edge function with thread_id:', threadId);
+        const { data, error } = await supabase.functions.invoke('webhook-proxy', {
+          body: {
+            thread_id: threadId,
+            message: content,
+          },
+        });
 
-          console.log('Webhook response status:', response.status);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('Webhook response data:', data);
-            // Tenta diferentes campos comuns de resposta
-            agentResponse = data.response || data.message || data.output || data.text || data.reply || data.answer || (typeof data === 'string' ? data : JSON.stringify(data));
-          } else {
-            console.error('Webhook response not ok:', response.status, response.statusText);
-            agentResponse = "Erro ao conectar com o webhook. Status: " + response.status;
-          }
-        } catch (webhookError) {
-          console.error('Webhook error:', webhookError);
-          agentResponse = "Erro de conexão com o webhook. Verifique se o URL está correto e se permite CORS.";
+        if (error) {
+          console.error('Edge function error:', error);
+          agentResponse = "Erro ao conectar com o serviço. Tente novamente.";
+        } else {
+          console.log('Edge function response:', data);
+          // Tenta diferentes campos comuns de resposta
+          agentResponse = data.response || data.message || data.output || data.text || data.reply || data.answer || (typeof data === 'string' ? data : JSON.stringify(data));
         }
+      } catch (webhookError) {
+        console.error('Request error:', webhookError);
+        agentResponse = "Erro de conexão. Tente novamente.";
       }
 
       // Simula delay da resposta
@@ -120,14 +111,12 @@ export function useChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [webhookUrl, createOrUpdateTicket]);
+  }, [threadId, createOrUpdateTicket]);
 
   return {
     messages,
     tickets,
     isLoading,
-    webhookUrl,
-    setWebhookUrl,
     sendMessage,
     selectedTicketId,
     setSelectedTicketId,
