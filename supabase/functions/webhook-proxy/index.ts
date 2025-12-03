@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = "https://flow.starbem.dev/webhook-test/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c";
+const WEBHOOK_URL = "https://flow.starbem.dev/webhook/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c";
 
 serve(async (req) => {
   // Handle CORS preflight requests

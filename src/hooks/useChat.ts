@@ -1,9 +1,8 @@
 import { useState, useCallback } from "react";
 import { Message, Ticket } from "@/types/ticket";
+import { supabase } from "@/integrations/supabase/client";
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-const WEBHOOK_URL = "https://flow.starbem.dev/webhook/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -63,33 +62,25 @@ export function useChat() {
       let agentResponse = "Obrigado pela sua mensagem! Estou aqui para ajudar.";
       
       try {
-        console.log('Sending to webhook:', WEBHOOK_URL);
-        console.log('Body:', { thread_id: threadId, message: content });
+        console.log('Sending via edge function with thread_id:', threadId);
         
-        const response = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke('webhook-proxy', {
+          body: {
             thread_id: threadId,
             message: content,
-          }),
+          },
         });
 
-        console.log('Response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
+        if (error) {
+          console.error('Edge function error:', error);
+          agentResponse = "Erro ao conectar com o serviço.";
+        } else {
           console.log('Response data:', data);
           agentResponse = data.output || data.response || data.message || data.text || data.reply || data.answer || JSON.stringify(data);
-        } else {
-          console.error('Response error:', response.status);
-          agentResponse = "Erro na resposta do servidor: " + response.status;
         }
       } catch (fetchError) {
-        console.error('Fetch error:', fetchError);
-        agentResponse = "Erro de conexão. Verifique o console.";
+        console.error('Request error:', fetchError);
+        agentResponse = "Erro de conexão.";
       }
 
       const agentMessage: Message = {
