@@ -1,14 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Send, Phone, Video, MoreVertical, Smile, Paperclip, Mic, Settings } from "lucide-react";
+import { X, Send, Phone, Video, MoreVertical, Smile, Paperclip, Mic } from "lucide-react";
 import { Message } from "@/types/ticket";
 import { ChatMessage } from "./ChatMessage";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface PhoneModalProps {
@@ -17,8 +11,6 @@ interface PhoneModalProps {
   messages: Message[];
   onSendMessage: (content: string) => void;
   isLoading: boolean;
-  webhookUrl: string;
-  onWebhookChange: (url: string) => void;
 }
 
 export function PhoneModal({
@@ -27,11 +19,8 @@ export function PhoneModal({
   messages,
   onSendMessage,
   isLoading,
-  webhookUrl,
-  onWebhookChange,
 }: PhoneModalProps) {
   const [inputValue, setInputValue] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -94,33 +83,9 @@ export function PhoneModal({
               <div className="flex items-center gap-4">
                 <Video className="w-5 h-5 text-primary-foreground" />
                 <Phone className="w-5 h-5 text-primary-foreground" />
-                <button 
-                  onClick={() => setShowSettings(!showSettings)}
-                  className="text-primary-foreground hover:bg-primary-foreground/10 p-1 rounded-full transition-colors"
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
+                <MoreVertical className="w-5 h-5 text-primary-foreground" />
               </div>
             </div>
-            
-            {/* Settings Dropdown */}
-            {showSettings && (
-              <div className="absolute top-32 right-8 w-64 bg-card rounded-lg shadow-xl border border-border p-3 z-10 animate-fade-in">
-                <div className="flex items-center gap-2 mb-2">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Webhook URL</span>
-                </div>
-                <Input
-                  value={webhookUrl}
-                  onChange={(e) => onWebhookChange(e.target.value)}
-                  placeholder="https://seu-webhook.com"
-                  className="text-xs"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Configure a URL do webhook para receber as mensagens
-                </p>
-              </div>
-            )}
             
             {/* Chat Background */}
             <div 

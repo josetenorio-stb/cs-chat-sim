@@ -11,8 +11,6 @@ const Index = () => {
     messages,
     tickets,
     isLoading,
-    webhookUrl,
-    setWebhookUrl,
     sendMessage,
     selectedTicketId,
     setSelectedTicketId,
@@ -48,8 +46,6 @@ const Index = () => {
           messages={messages}
           onSendMessage={sendMessage}
           isLoading={isLoading}
-          webhookUrl={webhookUrl}
-          onWebhookChange={setWebhookUrl}
         />
       </div>
     </>
