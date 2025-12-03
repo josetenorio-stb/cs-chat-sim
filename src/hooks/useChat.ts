@@ -7,7 +7,7 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("https://flow.starbem.dev/webhook-test/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const createOrUpdateTicket = useCallback((userMessage: Message, agentMessage?: Message) => {
