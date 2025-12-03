@@ -64,6 +64,7 @@ export function useChat() {
       
       if (webhookUrl) {
         try {
+          console.log('Sending to webhook:', webhookUrl);
           const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
@@ -76,13 +77,20 @@ export function useChat() {
             }),
           });
 
+          console.log('Webhook response status:', response.status);
+          
           if (response.ok) {
             const data = await response.json();
-            agentResponse = data.response || data.message || data.output || agentResponse;
+            console.log('Webhook response data:', data);
+            // Tenta diferentes campos comuns de resposta
+            agentResponse = data.response || data.message || data.output || data.text || data.reply || data.answer || (typeof data === 'string' ? data : JSON.stringify(data));
+          } else {
+            console.error('Webhook response not ok:', response.status, response.statusText);
+            agentResponse = "Erro ao conectar com o webhook. Status: " + response.status;
           }
         } catch (webhookError) {
           console.error('Webhook error:', webhookError);
-          agentResponse = "Desculpe, houve um problema ao processar sua mensagem. Por favor, tente novamente.";
+          agentResponse = "Erro de conexão com o webhook. Verifique se o URL está correto e se permite CORS.";
         }
       }
 
