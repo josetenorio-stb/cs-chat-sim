@@ -1,22 +1,22 @@
 import { useState, useCallback } from "react";
 import { Message, Ticket } from "@/types/ticket";
-import { supabase } from "@/integrations/supabase/client";
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+const WEBHOOK_URL = "https://flow.starbem.dev/webhook/0ff69ca2-9863-45a1-a0aa-aa9f8dde078c";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId] = useState(() => generateId()); // Thread ID único por sessão
+  const [threadId] = useState(() => generateId());
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const createOrUpdateTicket = useCallback((userMessage: Message, agentMessage?: Message) => {
     setTickets(prevTickets => {
-      const existingTicket = prevTickets[0]; // Simplificado: sempre usa o primeiro ticket ativo
+      const existingTicket = prevTickets[0];
       
       if (existingTicket && existingTicket.status !== 'resolved') {
-        // Atualiza ticket existente
         const updatedMessages = agentMessage 
           ? [...existingTicket.messages, userMessage, agentMessage]
           : [...existingTicket.messages, userMessage];
@@ -31,7 +31,6 @@ export function useChat() {
           ...prevTickets.slice(1)
         ];
       } else {
-        // Cria novo ticket
         const newTicket: Ticket = {
           id: generateId(),
           customerName: "Cliente WhatsApp",
@@ -61,32 +60,37 @@ export function useChat() {
     setIsLoading(true);
 
     try {
-      let agentResponse = "Obrigado pela sua mensagem! Estou aqui para ajudar. Como posso auxiliá-lo?";
+      let agentResponse = "Obrigado pela sua mensagem! Estou aqui para ajudar.";
       
       try {
-        console.log('Sending to edge function with thread_id:', threadId);
-        const { data, error } = await supabase.functions.invoke('webhook-proxy', {
-          body: {
+        console.log('Sending to webhook:', WEBHOOK_URL);
+        console.log('Body:', { thread_id: threadId, message: content });
+        
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             thread_id: threadId,
             message: content,
-          },
+          }),
         });
 
-        if (error) {
-          console.error('Edge function error:', error);
-          agentResponse = "Erro ao conectar com o serviço. Tente novamente.";
+        console.log('Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Response data:', data);
+          agentResponse = data.output || data.response || data.message || data.text || data.reply || data.answer || JSON.stringify(data);
         } else {
-          console.log('Edge function response:', data);
-          // Tenta diferentes campos comuns de resposta
-          agentResponse = data.response || data.message || data.output || data.text || data.reply || data.answer || (typeof data === 'string' ? data : JSON.stringify(data));
+          console.error('Response error:', response.status);
+          agentResponse = "Erro na resposta do servidor: " + response.status;
         }
-      } catch (webhookError) {
-        console.error('Request error:', webhookError);
-        agentResponse = "Erro de conexão. Tente novamente.";
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError);
+        agentResponse = "Erro de conexão. Verifique o console.";
       }
-
-      // Simula delay da resposta
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const agentMessage: Message = {
         id: generateId(),
@@ -98,7 +102,6 @@ export function useChat() {
       setMessages(prev => [...prev, agentMessage]);
       createOrUpdateTicket(userMessage, agentMessage);
       
-      // Seleciona o ticket mais recente
       setTickets(prev => {
         if (prev.length > 0) {
           setSelectedTicketId(prev[0].id);
@@ -107,7 +110,7 @@ export function useChat() {
       });
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
